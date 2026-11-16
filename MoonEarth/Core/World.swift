@@ -86,6 +86,15 @@ public struct Building: Codable, Equatable, Identifiable, Sendable {
     public var furniture: [Prop] = []
     public var edits: [VoxelEdit] = []
     public init(origin: Grid) { self.origin = origin }
+    public func validateLockedFurniture(previous: Building) throws {
+        for protected in previous.furniture where protected.locked {
+            guard let current = furniture.first(where: { $0.id == protected.id }) else {
+                throw WorldError.invalid("操作会移动或删除锁定家具，请先解锁")
+            }
+            var expected = protected; expected.locked = current.locked
+            guard current == expected else { throw WorldError.invalid("操作会修改锁定家具，请先解锁") }
+        }
+    }
     public var footprint: (width: Int, depth: Int) {
         let w = (width + 3) / 4, d = (depth + 3) / 4
         return turns % 2 == 0 ? (w, d) : (d, w)

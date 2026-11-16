@@ -13,8 +13,8 @@ final class EditorSmokeTests: XCTestCase {
         let assistant = app.buttons["design-assistant"]
         XCTAssertTrue(assistant.waitForExistence(timeout:20)); assistant.tap()
         let template = app.buttons["preview-template"]
+        for _ in 0..<4 where !template.isHittable { app.swipeUp() }
         XCTAssertTrue(template.waitForExistence(timeout:5))
-        if !template.isHittable { app.swipeUp() }
         template.tap()
         let apply = app.buttons["apply-preview"]
         XCTAssertTrue(apply.waitForExistence(timeout:15))

@@ -79,6 +79,23 @@ final class CoreTests: XCTestCase {
         var w = World(); w.tiles = [Tile(Grid(0,0),surface:.road),Tile(Grid(1,0),surface:.road),Tile(Grid(2,0),height:5,surface:.road)]
         XCTAssertEqual(Analyzer.analyze(w).roadComponents,2)
     }
+    func testRegionIncludesImplicitGround() throws {
+        let empty = World()
+        let region = try DocumentCodec.region(empty,from:Grid(0,0),to:Grid(3,3))
+        XCTAssertEqual(region.tiles.count,16)
+        var target = World(); target.tiles = [Tile(Grid(10,10),height:5,surface:.stone)]
+        let merged = try DocumentCodec.merge(region,into:target,at:Grid(10,10))
+        XCTAssertEqual(merged.tile(at:Grid(10,10)),Tile(Grid(10,10)))
+    }
+    func testLockedFurnitureCannotBeRemovedByFloorChange() throws {
+        var before = Generator.house(at:Grid(0,0),variant:1)
+        before.furniture[1].locked = true
+        var after = before; after.floors = 1; after.furniture.removeLast()
+        XCTAssertThrowsError(try after.validateLockedFurniture(previous:before))
+        XCTAssertNoThrow(try before.validateLockedFurniture(previous:before))
+        var unlocked = before; unlocked.furniture[1].locked = false
+        XCTAssertNoThrow(try unlocked.validateLockedFurniture(previous:before))
+    }
     func testGeometryContainsFiniteVerticesAndValidIndices() {
         for b in Mesher.building(Generator.house(at:Grid(0,0)),floor:nil,roof:true) {
             XCTAssertEqual(b.positions.count,b.normals.count)

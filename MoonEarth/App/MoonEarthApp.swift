@@ -19,6 +19,7 @@ struct ProjectHome: View {
     @Bindable var store: EditorStore
     @State private var editing = false
     @State private var newSheet = false
+    @State private var openCreatedProject = false
     @State private var template: WorldTemplate = .plain
     @State private var size = 128
     @State private var seed = "42"
@@ -58,7 +59,9 @@ struct ProjectHome: View {
             }.background(Color(red:0.93,green:0.95,blue:0.93))
                 .navigationTitle("Moon Earth").navigationBarTitleDisplayMode(.inline)
                 .fullScreenCover(isPresented:$editing,onDismiss:{ Task { await store.loadProjects() } }) { EditorView(store:store) }
-                .sheet(isPresented:$newSheet) {
+                .sheet(isPresented:$newSheet,onDismiss:{
+                    if openCreatedProject { openCreatedProject = false; editing = true }
+                }) {
                     NavigationStack {
                         Form {
                             Picker("模板",selection:$template) { ForEach(WorldTemplate.allCases,id:\.self) { Text($0.rawValue).tag($0) } }
@@ -67,7 +70,7 @@ struct ProjectHome: View {
                             Text("地图格为 1 米，建筑细节格为 0.25 米。较大地图需要更多内存。").font(.footnote).foregroundStyle(.secondary)
                         }.navigationTitle("新建世界").toolbar {
                             ToolbarItem(placement:.cancellationAction) { Button("取消") { newSheet = false } }
-                            ToolbarItem(placement:.confirmationAction) { Button("创建") { store.newProject(template:template,size:size,seed:UInt64(seed) ?? 42); newSheet = false; editing = true }.accessibilityIdentifier("confirm-create") }
+                            ToolbarItem(placement:.confirmationAction) { Button("创建") { store.newProject(template:template,size:size,seed:UInt64(seed) ?? 42); openCreatedProject = true; newSheet = false }.accessibilityIdentifier("confirm-create") }
                         }
                     }.presentationDetents([.medium])
                 }

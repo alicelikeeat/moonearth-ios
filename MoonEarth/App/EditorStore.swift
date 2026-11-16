@@ -132,7 +132,7 @@ final class EditorStore {
     }
     func flush() async {
         saveTask?.cancel()
-        let snapshot = world, rev = revision
+        let snapshot = strokeWorld ?? world, rev = revision
         do { try await repository.save(snapshot); if revision == rev { saveStatus = "已保存" } }
         catch { saveStatus = "保存失败"; self.error = error.localizedDescription }
     }
@@ -147,7 +147,9 @@ final class EditorStore {
         guard let id = selected else { return }
         change { w in
             guard let i = w.buildings.firstIndex(where: { $0.id == id }), !w.buildings[i].locked else { throw WorldError.invalid("建筑已锁定") }
+            let previous = w.buildings[i]
             action(&w.buildings[i])
+            try w.buildings[i].validateLockedFurniture(previous:previous)
         }
     }
     func toggleBuildingLock() {
