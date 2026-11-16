@@ -1,0 +1,55 @@
+name: Moon Earth iOS
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Core tests
+        run: swift test
+      - name: Generate native Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build iOS simulator app
+        run: |
+          set -o pipefail
+          xcodebuild -project MoonEarth.xcodeproj -scheme MoonEarth -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tee build.log
+      - name: Build device app without signing
+        run: |
+          set -o pipefail
+          xcodebuild -project MoonEarth.xcodeproj -scheme MoonEarth -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build-device CODE_SIGNING_ALLOWED=NO build | tee device-build.log
+      - name: Simulator editing and persistence smoke test
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
+          device_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(v["udid"] for k,vs in sorted(d.items(),reverse=True) if "iOS-26" in k for v in vs if v["isAvailable"] and "iPhone" in v["name"]))')
+          xcrun simctl boot "$device_id" || true
+          xcrun simctl bootstatus "$device_id" -b
+          xcodebuild -project MoonEarth.xcodeproj -scheme MoonEarth -configuration Debug -parallel-testing-enabled NO -test-timeouts-enabled YES -maximum-test-execution-time-allowance 180 -destination "platform=iOS Simulator,id=$device_id" -derivedDataPath build -resultBundlePath SmokeTests.xcresult CODE_SIGNING_ALLOWED=NO test | tee ui-test.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: MoonEarth-build-and-logs
+          path: |
+            build.log
+            device-build.log
+            ui-test.log
+            SmokeTests.xcresult
+            MoonEarth.xcodeproj
+            build/Build/Products/Debug-iphonesimulator/MoonEarth.app
+            build-device/Build/Products/Release-iphoneos/MoonEarth.app
+          if-no-files-found: ignore
