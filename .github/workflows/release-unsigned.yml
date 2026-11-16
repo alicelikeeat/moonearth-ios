@@ -1,0 +1,41 @@
+name: Publish unsigned IPA v0.1.0
+on:
+  push:
+    branches: [codex/release-unsigned-v0.1.0]
+    paths: ['.github/workflows/release-unsigned.yml', '.github/scripts/package_unsigned.py', 'docs/RELEASE-v0.1.0.md']
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: release-unsigned-v0.1.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: macos-26
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_SHA: 96a9d9fd3d17f67d6852f6e283250597b9239b58
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify successful source build
+        run: |
+          gh api repos/alicelikeeat/moonearth-ios/actions/runs/43821255131 > source-run.json
+          python3 - <<'PY'
+          import json, os
+          run = json.load(open('source-run.json'))
+          assert run['conclusion'] == 'success'
+          assert run['head_sha'] == os.environ['SOURCE_SHA']
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: MoonEarth-build-and-logs
+          run-id: 43821255131
+          github-token: ${{ github.token }}
+          path: download
+      - name: Package and validate unsigned device IPA
+        run: python3 .github/scripts/package_unsigned.py
+      - name: Publish prerelease with verified source tag
+        run: |
+          gh release create v0.1.0 MoonEarth-v0.1.0-unsigned.ipa MoonEarth-v0.1.0-unsigned.ipa.sha256 --target "$SOURCE_SHA" --title 'Moon Earth v0.1.0 · 未签名测试版' --prerelease --notes-file docs/RELEASE-v0.1.0.md
