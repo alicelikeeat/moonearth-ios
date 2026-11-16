@@ -96,6 +96,7 @@ struct WorldCanvas: UIViewRepresentable {
         var entities: [String:Entity] = [:]
         private let compiler = SceneCompiler()
         var renderTask: Task<Void,Never>?
+        private var pendingInput: WorldCanvas?
         private var renderedRevision = -1
         private var renderedCut = ""
         private var token = -1
@@ -132,12 +133,13 @@ struct WorldCanvas: UIViewRepresentable {
             guard renderedRevision != input.revision || renderedCut != cut else { return }
             renderedRevision = input.revision; renderedCut = cut
             terrainLookup = Dictionary(uniqueKeysWithValues:input.world.tiles.map { ($0.position,$0) })
-            renderTask?.cancel()
-            let rev = input.revision
+            pendingInput = input
+            guard renderTask == nil else { return }
             renderTask = Task {
+              while let input = pendingInput {
+                pendingInput = nil
                 let delta = await compiler.compile(input.world,selected:input.selected,floor:input.floor,roof:input.roof)
-                // Cancelled deltas may have updated compiler caches; invalidate before the next compile.
-                guard !Task.isCancelled, renderedRevision == rev else { await compiler.invalidate(); return }
+                guard !Task.isCancelled else { await compiler.invalidate(); renderTask = nil; return }
                 do {
                     for key in Array(entities.keys) where !delta.keys.contains(key) { entities.removeValue(forKey:key)?.removeFromParent() }
                     for item in delta.items {
@@ -158,6 +160,8 @@ struct WorldCanvas: UIViewRepresentable {
                     }
                     updateOverlay(input.world)
                 } catch { store.error = "场景网格生成失败：\(error.localizedDescription)"; await compiler.invalidate() }
+              }
+              renderTask = nil
             }
         }
         private func updateOverlay(_ world: World) {

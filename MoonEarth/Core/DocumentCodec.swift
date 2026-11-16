@@ -43,7 +43,12 @@ public enum DocumentCodec {
         let minX = min(start.x,end.x), minZ = min(start.z,end.z), maxX = max(start.x,end.x), maxZ = max(start.z,end.z)
         guard world.contains(Grid(minX,minZ)), world.contains(Grid(maxX,maxZ)) else { throw WorldError.invalid("选区超出地图") }
         var out = World(); out.name = world.name + " · 区域"; out.size = max(16,max(maxX-minX+1,maxZ-minZ+1))
-        out.tiles = world.tiles.filter { $0.position.x >= minX && $0.position.x <= maxX && $0.position.z >= minZ && $0.position.z <= maxZ }.map { Tile(Grid($0.position.x-minX,$0.position.z-minZ),height:$0.height,surface:$0.surface) }
+        let lookup = Dictionary(uniqueKeysWithValues:world.tiles.map { ($0.position,$0) })
+        // Include implicit default ground: importing an empty plain must replace old terrain too.
+        for x in minX...maxX { for z in minZ...maxZ {
+            let t = lookup[Grid(x,z)] ?? Tile(Grid(x,z))
+            out.tiles.append(Tile(Grid(x-minX,z-minZ),height:t.height,surface:t.surface))
+        } }
         for b in world.buildings {
             let f = b.footprint
             let intersects = b.origin.x <= maxX && b.origin.z <= maxZ && b.origin.x+f.width > minX && b.origin.z+f.depth > minZ

@@ -81,6 +81,7 @@ struct ProjectHome: View {
                     Button("删除",role:.destructive) { if let project = deleting { Task { await store.deleteProject(project) } }; deleting = nil }
                 }
                 .alert("提示",isPresented:Binding(get:{ store.error != nil && !editing },set:{ if !$0 { store.error = nil } })) { Button("好") { store.error = nil } } message: { Text(store.error ?? "") }
+                .onOpenURL { url in store.importFile(url); if store.preview != nil { editing = true } }
                 .task { await store.loadProjects() }
         }
     }

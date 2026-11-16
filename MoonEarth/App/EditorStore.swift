@@ -50,7 +50,7 @@ final class EditorStore {
     var voxelHeight = 2
     var voxelMaterial = 0
     var showLibrary = false
-    var showInspector = true
+    var showInspector = false
     var showAI = false
     var showAnalysis = false
     var presentation = false
@@ -73,6 +73,7 @@ final class EditorStore {
     var importing = false
     var favorites: Set<String> = Set(UserDefaults.standard.stringArray(forKey:"favorites") ?? [])
     private var saveTask: Task<Void,Never>?
+    private var generationID = UUID()
     private var generationTask: Task<Void,Never>?
     private var strokeWorld: World?
     private var strokePoints = Set<Grid>()
@@ -174,7 +175,10 @@ final class EditorStore {
     func beginStroke() { guard !busy, preview == nil else { return }; strokeWorld = world; strokePoints.removeAll(); roomStart = nil }
     func cancelStroke() { if let old = strokeWorld { world = old; revision += 1 }; strokeWorld = nil; roomStart = nil; strokePoints.removeAll() }
     func endStroke() {
-        if let old = strokeWorld, old != world { history.commit(previous:old); changed() }
+        if let old = strokeWorld, old != world {
+            do { _ = try world.validated(); history.commit(previous:old); changed() }
+            catch { world = old; revision += 1; self.error = error.localizedDescription }
+        }
         strokeWorld = nil; strokePoints.removeAll(); roomStart = nil
     }
     func touch(_ point: SIMD3<Float>, end: Bool = false) {
@@ -256,6 +260,7 @@ final class EditorStore {
     func generate(prompt: String, scope: DesignScope) {
         guard !busy, preview == nil else { return }
         busy = true; let snapshot = world, rev = revision, point = cursor, id = selected
+        let requestID = UUID(); generationID = requestID
         generationTask = Task {
             do {
                 let (next,summary) = try await DesignAssistant.generate(prompt:prompt,world:snapshot,cursor:point,selected:id,scope:scope)
@@ -263,10 +268,10 @@ final class EditorStore {
                 guard revision == rev else { throw WorldError.invalid("生成期间地图已变化，请重新生成") }
                 setPreview(next,title:summary); showAI = false
             } catch is CancellationError { } catch { self.error = error.localizedDescription }
-            busy = false
+            if generationID == requestID { busy = false }
         }
     }
-    func cancelGeneration() { generationTask?.cancel(); generationTask = nil; busy = false }
+    func cancelGeneration() { generationID = UUID(); generationTask?.cancel(); generationTask = nil; busy = false }
     func previewTemplate() {
         let b = Generator.house(at:cursor,elevation:world.tile(at:cursor).height+1,variant:houseVariant)
         let plan = DesignPlan(title:b.name,width:b.width,depth:b.depth,floors:b.floors,rooms:b.rooms,furniture:b.furniture)

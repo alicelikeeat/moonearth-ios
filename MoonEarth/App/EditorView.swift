@@ -131,6 +131,9 @@ struct InspectorView: View {
                     Text("\(b.width/4) × \(b.depth/4) 米 · \(b.floors) 层").font(.caption)
                     Toggle("锁定建筑",isOn:Binding(get:{ b.locked },set:{ _ in store.toggleBuildingLock() }))
                     if !b.locked {
+                        TextField("建筑名称",text:Binding(get:{ b.name },set:{ value in store.updateBuilding { $0.name = String(value.prefix(100)) } }))
+                        Stepper("宽度 \(Float(b.width)/4,specifier:"%.2f") m",value:Binding(get:{ b.width },set:{ value in store.updateBuilding { $0.width = value } }),in:16...96)
+                        Stepper("进深 \(Float(b.depth)/4,specifier:"%.2f") m",value:Binding(get:{ b.depth },set:{ value in store.updateBuilding { $0.depth = value } }),in:16...96)
                         Stepper("楼层 \(b.floors)",value:Binding(get:{ b.floors },set:{ count in store.updateBuilding { building in building.floors = count; building.rooms.removeAll { $0.floor >= count }; building.furniture.removeAll { $0.y >= Float(count*3) }; building.edits.removeAll { $0.y > count*12 }; }; store.floor = min(store.floor,count-1) }),in:1...6)
                         HStack { Button("旋转 90°") { store.updateBuilding { $0.turns = ($0.turns+1)%4 } }; Button("复制") { store.duplicateBuilding() } }
                         HStack { Button("←") { store.updateBuilding { $0.origin.x -= 1 } }; Button("→") { store.updateBuilding { $0.origin.x += 1 } }; Button("↑") { store.updateBuilding { $0.origin.z -= 1 } }; Button("↓") { store.updateBuilding { $0.origin.z += 1 } } }.frame(minHeight:44)
@@ -138,7 +141,9 @@ struct InspectorView: View {
                     if !store.interior { Button("进入室内") { store.enterBuilding() } }
                     Toggle("显示屋顶",isOn:$store.roof).disabled(store.interior)
                     ForEach(b.rooms.filter { !store.interior || $0.floor == store.floor }) { room in
-                        HStack { VStack(alignment:.leading) { Text(room.name); Text("\(room.floor+1)楼 · \(room.squareMetres,specifier:"%.1f") m²").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button(role:.destructive) { store.updateBuilding { $0.rooms.removeAll { $0.id == room.id } } } label: { Image(systemName:"minus.circle").frame(width:44,height:44) }.disabled(b.locked) }
+                        DisclosureGroup("\(room.name) · \(room.squareMetres,specifier:"%.1f") m²") {
+                            RoomControls(store:store,room:room).disabled(b.locked)
+                        }
                     }
                     if store.selectedProp != nil { FurnitureControls(store:store) }
                     Button("删除选中对象",role:.destructive) { store.removeSelected() }.disabled(b.locked)
@@ -148,6 +153,23 @@ struct InspectorView: View {
                 if let b = store.regionEnd { Text("区域终点 \(b.x),\(b.z)").font(.caption) }
             }.font(.subheadline).disabled(store.isPreviewing || store.busy)
         }
+    }
+}
+
+struct RoomControls: View {
+    @Bindable var store: EditorStore
+    let room: Room
+    func edit(_ action: (inout Room) -> Void) {
+        store.updateBuilding { b in if let i = b.rooms.firstIndex(where:{ $0.id == room.id }) { action(&b.rooms[i]) } }
+    }
+    var body: some View {
+        VStack(alignment:.leading,spacing:10) {
+            TextField("房间名称",text:Binding(get:{ room.name },set:{ name in edit { $0.name = String(name.prefix(80)) } }))
+            Stepper("宽 \(Float(room.width)/4,specifier:"%.2f") m",value:Binding(get:{ room.width },set:{ value in edit { $0.width = value } }),in:4...80)
+            Stepper("深 \(Float(room.depth)/4,specifier:"%.2f") m",value:Binding(get:{ room.depth },set:{ value in edit { $0.depth = value } }),in:4...80)
+            HStack { Button("←") { edit { $0.x -= 1 } }; Button("→") { edit { $0.x += 1 } }; Button("↑") { edit { $0.z -= 1 } }; Button("↓") { edit { $0.z += 1 } } }.frame(minHeight:44)
+            Button("删除房间分隔",role:.destructive) { store.updateBuilding { $0.rooms.removeAll { $0.id == room.id } } }
+        }.padding(.top,8)
     }
 }
 

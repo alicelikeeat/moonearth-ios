@@ -46,7 +46,7 @@ public enum BuildingGeometry {
             let p = Cell(edit.x,edit.y,edit.z)
             if let m = edit.material { cells[p] = m } else { cells.removeValue(forKey: p) }
         }
-        return cells
+        return cap == Int.max ? cells : cells.filter { $0.key.y <= cap }
     }
 }
 
