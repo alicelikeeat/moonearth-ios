@@ -190,7 +190,7 @@ struct WorldCanvas: UIViewRepresentable {
             // Terrain heightfield picking avoids one collider per voxel.
             for step in 0..<2400 {
                 let p = ray.origin+ray.direction*(Float(step)*0.25)
-                let grid = Grid(Int(floor(p.x)),Int(floor(p.z)))
+                let grid = Grid(Int(Foundation.floor(p.x)),Int(Foundation.floor(p.z)))
                 if store.world.contains(grid), p.y <= Float((terrainLookup[grid]?.height ?? 0)+1), p.y >= 0 { return p }
             }
             return nil

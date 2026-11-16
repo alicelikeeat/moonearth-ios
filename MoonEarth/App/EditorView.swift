@@ -43,7 +43,7 @@ struct EditorView: View {
     }
     private var topBar: some View {
         HStack(spacing:12) {
-            Button { Task { await store.flush(); if store.saveStatus == "已保存" { dismiss() } } } label: { Image(systemName:"chevron.left").frame(width:44,height:44) }.accessibilityLabel("保存并返回项目")
+            Button { Task { await store.flush(); if store.saveStatus == "已保存" { dismiss() } } } label: { Image(systemName:"chevron.left").frame(width:44,height:44) }.accessibilityLabel("保存并返回项目").accessibilityIdentifier("save-back")
             VStack(alignment:.leading,spacing:2) {
                 Text(store.displayWorld.name).font(.headline).lineLimit(1)
                 Text(store.saveStatus).font(.caption2).foregroundStyle(.secondary)
@@ -52,7 +52,7 @@ struct EditorView: View {
             if !store.presentation {
                 Button { store.undo() } label: { Image(systemName:"arrow.uturn.backward").frame(width:44,height:44) }.disabled(!store.history.canUndo || store.isPreviewing || store.busy).accessibilityLabel("撤销")
                 Button { store.redo() } label: { Image(systemName:"arrow.uturn.forward").frame(width:44,height:44) }.disabled(!store.history.canRedo || store.isPreviewing || store.busy).accessibilityLabel("重做")
-                Button { store.showAI = true } label: { Label("AI",systemImage:"sparkles").frame(minHeight:44) }.disabled(store.isPreviewing || store.busy)
+                Button { store.showAI = true } label: { Label("AI",systemImage:"sparkles").frame(minHeight:44) }.disabled(store.isPreviewing || store.busy).accessibilityIdentifier("design-assistant")
             }
             Menu {
                 Button("重命名",systemImage:"pencil") { name = store.world.name; renaming = true }.disabled(store.isPreviewing)
@@ -100,7 +100,7 @@ struct EditorView: View {
             Spacer()
             Button("检查") { store.analyze() }
             Button("取消") { store.discardPreview() }
-            Button("应用") { store.applyPreview() }.buttonStyle(.borderedProminent)
+            Button("应用") { store.applyPreview() }.buttonStyle(.borderedProminent).accessibilityIdentifier("apply-preview")
         }.padding(12).studioGlass()
     }
 }

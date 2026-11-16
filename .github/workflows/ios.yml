@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   build:
@@ -32,6 +32,11 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project MoonEarth.xcodeproj -scheme MoonEarth -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build-device CODE_SIGNING_ALLOWED=NO build | tee device-build.log
+      - name: Simulator editing and persistence smoke test
+        run: |
+          set -o pipefail
+          device_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(v["udid"] for k,vs in sorted(d.items(),reverse=True) if "iOS-26" in k for v in vs if v["isAvailable"] and "iPhone" in v["name"]))')
+          xcodebuild -project MoonEarth.xcodeproj -scheme MoonEarth -configuration Debug -destination "platform=iOS Simulator,id=$device_id" -derivedDataPath build -resultBundlePath SmokeTests.xcresult CODE_SIGNING_ALLOWED=NO test | tee ui-test.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -39,6 +44,8 @@ jobs:
           path: |
             build.log
             device-build.log
+            ui-test.log
+            SmokeTests.xcresult
             MoonEarth.xcodeproj
             build/Build/Products/Debug-iphonesimulator/MoonEarth.app
             build-device/Build/Products/Release-iphoneos/MoonEarth.app

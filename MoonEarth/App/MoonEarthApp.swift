@@ -33,7 +33,7 @@ struct ProjectHome: View {
                         Text("构建你的像素世界 · 设计每一层生活").foregroundStyle(.secondary)
                     }.padding(.vertical,20)
                     HStack {
-                        Button("创建世界",systemImage:"plus") { newSheet = true }.buttonStyle(.borderedProminent)
+                        Button("创建世界",systemImage:"plus") { newSheet = true }.buttonStyle(.borderedProminent).accessibilityIdentifier("new-world")
                         Button("打开示例",systemImage:"sparkles") { store.open(Generator.demo()); editing = true }.buttonStyle(.bordered)
                         Button("导入",systemImage:"square.and.arrow.down") { store.importing = true }.buttonStyle(.bordered)
                     }
@@ -67,7 +67,7 @@ struct ProjectHome: View {
                             Text("地图格为 1 米，建筑细节格为 0.25 米。较大地图需要更多内存。").font(.footnote).foregroundStyle(.secondary)
                         }.navigationTitle("新建世界").toolbar {
                             ToolbarItem(placement:.cancellationAction) { Button("取消") { newSheet = false } }
-                            ToolbarItem(placement:.confirmationAction) { Button("创建") { store.newProject(template:template,size:size,seed:UInt64(seed) ?? 42); newSheet = false; editing = true } }
+                            ToolbarItem(placement:.confirmationAction) { Button("创建") { store.newProject(template:template,size:size,seed:UInt64(seed) ?? 42); newSheet = false; editing = true }.accessibilityIdentifier("confirm-create") }
                         }
                     }.presentationDetents([.medium])
                 }

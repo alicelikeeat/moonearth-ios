@@ -7,3 +7,4 @@ xcuserdata/
 MoonEarth.xcodeproj/
 MoonEarth/Info.plist
 *.log
+*.xcresult/

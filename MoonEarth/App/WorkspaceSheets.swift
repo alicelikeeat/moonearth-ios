@@ -85,7 +85,7 @@ struct AssistantSheet: View {
                 }
                 Section("离线程序模板 · 非 AI") {
                     Stepper("建筑模板 \(store.houseVariant+1)/12",value:$store.houseVariant,in:0...11)
-                    Button("预览模板建筑") { store.previewTemplate() }.disabled(store.busy)
+                    Button("预览模板建筑") { store.previewTemplate() }.disabled(store.busy).accessibilityIdentifier("preview-template")
                     Text("按确定的规则生成，不理解上方的自然语言描述。").font(.caption).foregroundStyle(.secondary)
                 }
             }.navigationTitle("设计助手").toolbar { Button("关闭") { dismiss() } }
